@@ -154,6 +154,12 @@ RELEVANT XƏBƏRLƏR:"""
                 model=self.model_name,
                 contents=filter_prompt
             )
+
+            # Check if response has text
+            if not response or not hasattr(response, 'text') or response.text is None:
+                print(f"[WARNING] Empty response from API, using all articles")
+                return articles
+
             relevant_indices_str = response.text.strip()
 
             # Parse indices
@@ -282,6 +288,12 @@ PROFESSIONAL BANKING INTELLIGENCE REPORT:"""
                 model=self.model_name,
                 contents=prompt
             )
+
+            # Check if response has text
+            if not response or not hasattr(response, 'text') or response.text is None:
+                print(f"[WARNING] Empty response from API, using fallback summary")
+                return self._create_fallback_summary(articles, sources_stats)
+
             summary = response.text.strip()
 
             print(f"[SUCCESS] Created banking intelligence report from {len(relevant_articles)} relevant articles")
