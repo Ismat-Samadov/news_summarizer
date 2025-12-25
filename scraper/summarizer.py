@@ -23,21 +23,23 @@ class GeminiSummarizer:
     """
     Summarize news articles using Google Gemini API
 
-    Free tier limits (Gemini 2.0 Flash):
+    Free tier limits (Gemini 1.5 Flash - December 2024):
     - 15 requests per minute
     - 1 million tokens per minute
     - 1500 requests per day
+    - NOTE: gemini-2.0-flash not yet available on free tier in Dec 2024
     """
 
     def __init__(self):
         self.api_key = os.getenv('GEMINI_API_KEY')
         self.enabled = bool(self.api_key)
         self.client = None
-        self.model_name = 'gemini-2.0-flash'  # Current stable flash model
+        self.model_name = 'gemini-1.5-flash'  # Stable free-tier model for Dec 2024
 
         # Rate limiting
         self.requests_per_minute = 15
         self.request_times = []
+        self.quota_exhausted = False  # Track if daily quota is exhausted
 
         if not self.enabled:
             print("[INFO] Summarization disabled (missing GEMINI_API_KEY)")
@@ -100,6 +102,11 @@ class GeminiSummarizer:
         if not self.enabled or not articles:
             return articles
 
+        # Skip if quota exhausted
+        if self.quota_exhausted:
+            print("[WARNING] Gemini quota exhausted - skipping AI filtering")
+            return articles
+
         try:
             print(f"\n[INFO] Filtering {len(articles)} articles for banking/finance relevance...")
             self._wait_for_rate_limit()
@@ -107,7 +114,7 @@ class GeminiSummarizer:
             # Prepare articles for filtering
             articles_list = []
             for i, article in enumerate(articles, 1):
-                content_snippet = article.get('content', '')[:200]
+                content_snippet = article.get('content', '')[:100]  # Reduced from 200 to save tokens
                 articles_list.append(
                     f"{i}. {article['title']}\n{content_snippet}..."
                 )
@@ -163,7 +170,14 @@ RELEVANT XƏBƏRLƏR:"""
                 return articles
 
         except Exception as e:
-            print(f"[ERROR] Filtering failed: {e}")
+            error_msg = str(e)
+            # Check if it's a quota error
+            if '429' in error_msg or 'RESOURCE_EXHAUSTED' in error_msg or 'quota' in error_msg.lower():
+                self.quota_exhausted = True
+                print(f"[ERROR] Gemini quota exhausted: {e}")
+                print(f"[WARNING] AI filtering disabled for this session")
+            else:
+                print(f"[ERROR] Filtering failed: {e}")
             print(f"[INFO] Using all articles as fallback")
             return articles
 
@@ -181,6 +195,11 @@ RELEVANT XƏBƏRLƏR:"""
         if not self.enabled or not articles:
             return None
 
+        # If quota exhausted, return basic summary
+        if self.quota_exhausted:
+            print("[WARNING] Gemini quota exhausted - returning basic summary")
+            return self._create_fallback_summary(articles, sources_stats)
+
         try:
             # STEP 1: Filter for relevant articles
             relevant_articles = self.filter_relevant_articles(articles)
@@ -194,7 +213,7 @@ RELEVANT XƏBƏRLƏR:"""
             # Prepare article summaries WITHOUT source names (for public channel)
             article_summaries = []
             for i, article in enumerate(relevant_articles, 1):
-                content_snippet = article.get('content', '')[:400]
+                content_snippet = article.get('content', '')[:200]  # Reduced from 400 to save tokens
                 # Don't mention source name - looks more professional
                 article_summaries.append(
                     f"{i}. {article['title']}\n"
@@ -271,11 +290,61 @@ PROFESSIONAL BANKING INTELLIGENCE REPORT:"""
             return summary
 
         except Exception as e:
+            error_msg = str(e)
+            # Check if it's a quota error
+            if '429' in error_msg or 'RESOURCE_EXHAUSTED' in error_msg or 'quota' in error_msg.lower():
+                self.quota_exhausted = True
+                print(f"[ERROR] Gemini quota exhausted: {e}")
+                print(f"[WARNING] Returning basic summary without AI")
+                return self._create_fallback_summary(articles, sources_stats)
+
             try:
                 print(f"[ERROR] Failed to create banking intelligence: {e}")
             except (UnicodeEncodeError, UnicodeDecodeError):
                 print(f"[ERROR] Failed to create banking intelligence (encoding error)")
             return None
+
+    def _create_fallback_summary(self, articles: List[Dict], sources_stats: List[Dict]) -> str:
+        """
+        Create a basic summary without AI when quota is exhausted
+
+        Args:
+            articles: List of articles
+            sources_stats: List of stats per source
+
+        Returns:
+            Basic summary text in Azerbaijani
+        """
+        # Group articles by source
+        sources = {}
+        for article in articles[:20]:  # Limit to first 20
+            source = article.get('source', 'Unknown')
+            if source not in sources:
+                sources[source] = []
+            sources[source].append(article['title'])
+
+        # Build basic summary
+        summary_parts = [
+            "⚠️ QISA XÜLASƏ (AI ANALİZ MÜMKÜN DEYİL)",
+            "",
+            f"Bu sessiyada {len(articles)} yeni xəbər toplandı.",
+            ""
+        ]
+
+        # Add article titles by source
+        summary_parts.append("📰 YENI XƏBƏRLƏR:")
+        for source, titles in list(sources.items())[:5]:  # Max 5 sources
+            summary_parts.append(f"\n{source}:")
+            for title in titles[:3]:  # Max 3 articles per source
+                summary_parts.append(f"  • {title}")
+
+        summary_parts.extend([
+            "",
+            "💡 QEYD: Gemini API limiti dolduğu üçün AI analiz edilmədi.",
+            "Xəbərlər verilənlər bazasında saxlanılıb və növbəti sessiyada analiz ediləcək."
+        ])
+
+        return "\n".join(summary_parts)
 
     def get_usage_stats(self) -> Dict:
         """
