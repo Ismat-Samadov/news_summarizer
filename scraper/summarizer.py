@@ -23,7 +23,7 @@ class GeminiSummarizer:
     """
     Summarize news articles using Google Gemini API
 
-    Free tier limits (Gemini 1.5 Flash):
+    Free tier limits (Gemini 2.0 Flash):
     - 15 requests per minute
     - 1 million tokens per minute
     - 1500 requests per day
@@ -33,7 +33,7 @@ class GeminiSummarizer:
         self.api_key = os.getenv('GEMINI_API_KEY')
         self.enabled = bool(self.api_key)
         self.client = None
-        self.model_name = 'gemini-1.5-flash'  # Stable model with better free tier limits
+        self.model_name = 'gemini-2.0-flash'  # Current stable flash model
 
         # Rate limiting
         self.requests_per_minute = 15

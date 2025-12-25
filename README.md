@@ -25,7 +25,7 @@ Async news scraper for 8 major Azerbaijani news sources with AI summarization an
 
 - **8 News Sources**: Banker.az, Marja.az, Report.az, Fed.az, Sonxeber.az, Iqtisadiyyat.az, Trend.az, APA.az
 - **Async Architecture**: 3-4x faster than synchronous scraping
-- **AI Summarization**: Google Gemini 1.5 Flash powered article summaries
+- **AI Summarization**: Google Gemini 2.0 Flash powered article summaries
 - **Telegram Reports**: Automatic notifications with summaries
 - **PostgreSQL Storage**: Full article database with relationships
 - **Concurrent Processing**: Batch scraping with rate limiting
@@ -56,7 +56,7 @@ graph TB
     end
 
     subgraph "AI Processing"
-        C1[Gemini 1.5 Flash]
+        C1[Gemini 2.0 Flash]
         C2[Relevance Filter]
         C3[Summary Generator]
     end
@@ -258,7 +258,7 @@ flowchart LR
 ### Rate Limiting
 
 ```python
-# Gemini 1.5 Flash Free Tier Limits
+# Gemini 2.0 Flash Free Tier Limits
 requests_per_minute = 15
 tokens_per_minute = 1_000_000
 requests_per_day = 1_500
@@ -612,7 +612,7 @@ ORDER BY count DESC;
 **1. Quota Exceeded (429 Error)**
 ```
 Error: 429 RESOURCE_EXHAUSTED
-Solution: Using gemini-1.5-flash with generous free tier
+Solution: Using gemini-2.0-flash with generous free tier
 ```
 
 **2. Bot Protection (403 Error)**
