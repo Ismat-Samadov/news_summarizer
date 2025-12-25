@@ -1,13 +1,13 @@
 """
-Async main scraper script
-Runs all news source scrapers asynchronously and saves articles to database
+Async main scraper script - REFACTORED for transactional DB saves
+Runs all news source scrapers asynchronously and ONLY saves if everything succeeds
 """
 
 import sys
 import os
 import asyncio
 from datetime import datetime, timezone
-from typing import Dict
+from typing import Dict, List
 
 # Fix encoding for Azerbaijani characters on Windows
 if sys.platform == 'win32' and hasattr(sys.stdout, 'buffer'):
@@ -37,590 +37,59 @@ from telegram import TelegramReporter
 from summarizer import GeminiSummarizer
 
 
-async def scrape_banker_az(db: Database, summarizer: GeminiSummarizer, scraping_session_id: int, num_pages: int = 2) -> Dict:
+async def scrape_source(scraper_class, source_name: str, db: Database, num_pages: int) -> Dict:
     """
-    Scrape articles from Banker.az asynchronously
+    Generic scraper function that collects articles without saving to DB
 
     Args:
-        db: Database instance
-        summarizer: GeminiSummarizer instance
-        scraping_session_id: ID of the current scraping session
+        scraper_class: Scraper class to use
+        source_name: Name of the source
+        db: Database instance (for duplicate checking)
         num_pages: Number of pages to scrape
 
     Returns:
-        Dictionary with scraping statistics and new articles
+        Dictionary with scraping statistics and collected articles
     """
     print("\n" + "=" * 60)
-    print("SCRAPING BANKER.AZ")
+    print(f"SCRAPING {source_name.upper()}")
     print("=" * 60)
 
-    total_saved = 0
     new_articles = []
 
-    async with BankerAzScraper() as scraper:
+    async with scraper_class() as scraper:
         articles = await scraper.scrape_all(num_pages=num_pages, batch_size=10)
 
         total_found = len(articles)
-        total_scraped = total_found
         total_skipped = 0
 
-        # Save articles to database
+        # Check for duplicates but don't save yet
         for article in articles:
-            # Check if article already exists
             if db.article_exists(article['url']):
                 total_skipped += 1
                 continue
-
-            # Save to database
-            article_id = db.insert_article(article, scraping_session_id)
-            if article_id:
-                total_saved += 1
-                new_articles.append(article)
+            new_articles.append(article)
 
     print("\n" + "=" * 60)
-    print(f"BANKER.AZ SUMMARY")
+    print(f"{source_name.upper()} SUMMARY")
     print(f"Total found: {total_found}")
-    print(f"Total scraped: {total_scraped}")
-    print(f"Total saved to DB: {total_saved}")
-    print(f"Total skipped: {total_skipped}")
+    print(f"New articles: {len(new_articles)}")
+    print(f"Duplicates skipped: {total_skipped}")
     print("=" * 60)
 
     return {
-        'name': 'Banker.az',
+        'name': source_name,
         'total': total_found,
-        'scraped': total_scraped,
-        'saved': total_saved,
-        'skipped': total_skipped,
-        'new_articles': new_articles
-    }
-
-
-async def scrape_marja_az(db: Database, summarizer: GeminiSummarizer, scraping_session_id: int, num_pages: int = 2) -> Dict:
-    """
-    Scrape articles from Marja.az asynchronously
-
-    Args:
-        db: Database instance
-        summarizer: GeminiSummarizer instance
-        scraping_session_id: ID of the current scraping session
-        num_pages: Number of pages to scrape
-
-    Returns:
-        Dictionary with scraping statistics and new articles
-    """
-    print("\n" + "=" * 60)
-    print("SCRAPING MARJA.AZ")
-    print("=" * 60)
-
-    total_saved = 0
-    new_articles = []
-
-    async with MarjaAzScraper() as scraper:
-        articles = await scraper.scrape_all(num_pages=num_pages, batch_size=10)
-
-        total_found = len(articles)
-        total_scraped = total_found
-        total_skipped = 0
-
-        # Save articles to database
-        for article in articles:
-            # Check if article already exists
-            if db.article_exists(article['url']):
-                total_skipped += 1
-                continue
-
-            # Save to database
-            article_id = db.insert_article(article, scraping_session_id)
-            if article_id:
-                total_saved += 1
-                new_articles.append(article)
-
-    print("\n" + "=" * 60)
-    print(f"MARJA.AZ SUMMARY")
-    print(f"Total found: {total_found}")
-    print(f"Total scraped: {total_scraped}")
-    print(f"Total saved to DB: {total_saved}")
-    print(f"Total skipped: {total_skipped}")
-    print("=" * 60)
-
-    return {
-        'name': 'Marja.az',
-        'total': total_found,
-        'scraped': total_scraped,
-        'saved': total_saved,
-        'skipped': total_skipped,
-        'new_articles': new_articles
-    }
-
-
-async def scrape_report_az(db: Database, summarizer: GeminiSummarizer, scraping_session_id: int, num_pages: int = 1) -> Dict:
-    """
-    Scrape articles from Report.az asynchronously
-
-    Args:
-        db: Database instance
-        summarizer: GeminiSummarizer instance
-        scraping_session_id: ID of the current scraping session
-        num_pages: Number of pages to scrape
-
-    Returns:
-        Dictionary with scraping statistics and new articles
-    """
-    print("\n" + "=" * 60)
-    print("SCRAPING REPORT.AZ")
-    print("=" * 60)
-
-    total_saved = 0
-    new_articles = []
-
-    async with ReportAzScraper() as scraper:
-        articles = await scraper.scrape_all(num_pages=num_pages, batch_size=10)
-
-        total_found = len(articles)
-        total_scraped = total_found
-        total_skipped = 0
-
-        # Save articles to database
-        for article in articles:
-            # Check if article already exists
-            if db.article_exists(article['url']):
-                total_skipped += 1
-                continue
-
-            # Save to database
-            article_id = db.insert_article(article, scraping_session_id)
-            if article_id:
-                total_saved += 1
-                new_articles.append(article)
-
-    print("\n" + "=" * 60)
-    print(f"REPORT.AZ SUMMARY")
-    print(f"Total found: {total_found}")
-    print(f"Total scraped: {total_scraped}")
-    print(f"Total saved to DB: {total_saved}")
-    print(f"Total skipped: {total_skipped}")
-    print("=" * 60)
-
-    return {
-        'name': 'Report.az',
-        'total': total_found,
-        'scraped': total_scraped,
-        'saved': total_saved,
-        'skipped': total_skipped,
-        'new_articles': new_articles
-    }
-
-
-async def scrape_fed_az(db: Database, summarizer: GeminiSummarizer, scraping_session_id: int, num_pages: int = 2) -> Dict:
-    """
-    Scrape articles from Fed.az (multiple categories) asynchronously
-
-    Args:
-        db: Database instance
-        summarizer: GeminiSummarizer instance
-        scraping_session_id: ID of the current scraping session
-        num_pages: Number of pages to scrape per category
-
-    Returns:
-        Dictionary with scraping statistics and new articles
-    """
-    print("\n" + "=" * 60)
-    print("SCRAPING FED.AZ")
-    print("=" * 60)
-
-    total_saved = 0
-    new_articles = []
-
-    async with FedAzScraper() as scraper:
-        articles = await scraper.scrape_all(num_pages=num_pages, batch_size=10)
-
-        total_found = len(articles)
-        total_scraped = total_found
-        total_skipped = 0
-
-        # Save articles to database
-        for article in articles:
-            # Check if article already exists
-            if db.article_exists(article['url']):
-                total_skipped += 1
-                continue
-
-            # Save to database
-            article_id = db.insert_article(article, scraping_session_id)
-            if article_id:
-                total_saved += 1
-                new_articles.append(article)
-
-    print("\n" + "=" * 60)
-    print(f"FED.AZ SUMMARY")
-    print(f"Total found: {total_found}")
-    print(f"Total scraped: {total_scraped}")
-    print(f"Total saved to DB: {total_saved}")
-    print(f"Total skipped: {total_skipped}")
-    print("=" * 60)
-
-    return {
-        'name': 'Fed.az',
-        'total': total_found,
-        'scraped': total_scraped,
-        'saved': total_saved,
-        'skipped': total_skipped,
-        'new_articles': new_articles
-    }
-
-
-async def scrape_sonxeber_az(db: Database, summarizer: GeminiSummarizer, scraping_session_id: int, num_pages: int = 2) -> Dict:
-    """
-    Scrape articles from Sonxeber.az asynchronously
-
-    Args:
-        db: Database instance
-        summarizer: GeminiSummarizer instance
-        scraping_session_id: ID of the current scraping session
-        num_pages: Number of pages to scrape
-
-    Returns:
-        Dictionary with scraping statistics and new articles
-    """
-    print("\n" + "=" * 60)
-    print("SCRAPING SONXEBER.AZ")
-    print("=" * 60)
-
-    total_saved = 0
-    new_articles = []
-
-    async with SonxeberAzScraper() as scraper:
-        articles = await scraper.scrape_all(num_pages=num_pages, batch_size=10)
-
-        total_found = len(articles)
-        total_scraped = total_found
-        total_skipped = 0
-
-        # Save articles to database
-        for article in articles:
-            # Check if article already exists
-            if db.article_exists(article['url']):
-                total_skipped += 1
-                continue
-
-            # Save to database
-            article_id = db.insert_article(article, scraping_session_id)
-            if article_id:
-                total_saved += 1
-                new_articles.append(article)
-
-    print("\n" + "=" * 60)
-    print(f"SONXEBER.AZ SUMMARY")
-    print(f"Total found: {total_found}")
-    print(f"Total scraped: {total_scraped}")
-    print(f"Total saved to DB: {total_saved}")
-    print(f"Total skipped: {total_skipped}")
-    print("=" * 60)
-
-    return {
-        'name': 'Sonxeber.az',
-        'total': total_found,
-        'scraped': total_scraped,
-        'saved': total_saved,
-        'skipped': total_skipped,
-        'new_articles': new_articles
-    }
-
-
-async def scrape_iqtisadiyyat_az(db: Database, summarizer: GeminiSummarizer, scraping_session_id: int, num_pages: int = 2) -> Dict:
-    """
-    Scrape articles from Iqtisadiyyat.az (multiple categories) asynchronously
-
-    Args:
-        db: Database instance
-        summarizer: GeminiSummarizer instance
-        scraping_session_id: ID of the current scraping session
-        num_pages: Number of pages to scrape per category
-
-    Returns:
-        Dictionary with scraping statistics and new articles
-    """
-    print("\n" + "=" * 60)
-    print("SCRAPING IQTISADIYYAT.AZ")
-    print("=" * 60)
-
-    total_saved = 0
-    new_articles = []
-
-    async with IqtisadiyyatAzScraper() as scraper:
-        articles = await scraper.scrape_all(num_pages=num_pages, batch_size=10)
-
-        total_found = len(articles)
-        total_scraped = total_found
-        total_skipped = 0
-
-        # Save articles to database
-        for article in articles:
-            # Check if article already exists
-            if db.article_exists(article['url']):
-                total_skipped += 1
-                continue
-
-            # Save to database
-            article_id = db.insert_article(article, scraping_session_id)
-            if article_id:
-                total_saved += 1
-                new_articles.append(article)
-
-    print("\n" + "=" * 60)
-    print(f"IQTISADIYYAT.AZ SUMMARY")
-    print(f"Total found: {total_found}")
-    print(f"Total scraped: {total_scraped}")
-    print(f"Total saved to DB: {total_saved}")
-    print(f"Total skipped: {total_skipped}")
-    print("=" * 60)
-
-    return {
-        'name': 'Iqtisadiyyat.az',
-        'total': total_found,
-        'scraped': total_scraped,
-        'saved': total_saved,
-        'skipped': total_skipped,
-        'new_articles': new_articles
-    }
-
-
-async def scrape_trend_az(db: Database, summarizer: GeminiSummarizer, scraping_session_id: int, num_pages: int = 1) -> Dict:
-    """
-    Scrape articles from Trend.az asynchronously
-
-    Args:
-        db: Database instance
-        summarizer: GeminiSummarizer instance
-        scraping_session_id: ID of the current scraping session
-        num_pages: Number of pages to scrape
-
-    Returns:
-        Dictionary with scraping statistics and new articles
-    """
-    print("\n" + "=" * 60)
-    print("SCRAPING TREND.AZ")
-    print("=" * 60)
-
-    total_saved = 0
-    new_articles = []
-
-    async with TrendAzScraper() as scraper:
-        articles = await scraper.scrape_all(num_pages=num_pages, batch_size=10)
-
-        total_found = len(articles)
-        total_scraped = total_found
-        total_skipped = 0
-
-        # Save articles to database
-        for article in articles:
-            # Check if article already exists
-            if db.article_exists(article['url']):
-                total_skipped += 1
-                continue
-
-            # Save to database
-            article_id = db.insert_article(article, scraping_session_id)
-            if article_id:
-                total_saved += 1
-                new_articles.append(article)
-
-    print("\n" + "=" * 60)
-    print(f"TREND.AZ SUMMARY")
-    print(f"Total found: {total_found}")
-    print(f"Total scraped: {total_scraped}")
-    print(f"Total saved to DB: {total_saved}")
-    print(f"Total skipped: {total_skipped}")
-    print("=" * 60)
-
-    return {
-        'name': 'Trend.az',
-        'total': total_found,
-        'scraped': total_scraped,
-        'saved': total_saved,
-        'skipped': total_skipped,
-        'new_articles': new_articles
-    }
-
-
-async def scrape_apa_az(db: Database, summarizer: GeminiSummarizer, scraping_session_id: int, num_pages: int = 2) -> Dict:
-    """
-    Scrape articles from APA.az (economy section) asynchronously
-
-    Args:
-        db: Database instance
-        summarizer: GeminiSummarizer instance
-        scraping_session_id: ID of the current scraping session
-        num_pages: Number of pages to scrape
-
-    Returns:
-        Dictionary with scraping statistics and new articles
-    """
-    print("\n" + "=" * 60)
-    print("SCRAPING APA.AZ")
-    print("=" * 60)
-
-    total_saved = 0
-    new_articles = []
-
-    async with ApaAzScraper() as scraper:
-        articles = await scraper.scrape_all(num_pages=num_pages, batch_size=10)
-
-        total_found = len(articles)
-        total_scraped = total_found
-        total_skipped = 0
-
-        # Save articles to database
-        for article in articles:
-            # Check if article already exists
-            if db.article_exists(article['url']):
-                total_skipped += 1
-                continue
-
-            # Save to database
-            article_id = db.insert_article(article, scraping_session_id)
-            if article_id:
-                total_saved += 1
-                new_articles.append(article)
-
-    print("\n" + "=" * 60)
-    print(f"APA.AZ SUMMARY")
-    print(f"Total found: {total_found}")
-    print(f"Total scraped: {total_scraped}")
-    print(f"Total saved to DB: {total_saved}")
-    print(f"Total skipped: {total_skipped}")
-    print("=" * 60)
-
-    return {
-        'name': 'APA.az',
-        'total': total_found,
-        'scraped': total_scraped,
-        'saved': total_saved,
-        'skipped': total_skipped,
-        'new_articles': new_articles
-    }
-
-
-async def scrape_qafqazinfo_az(db: Database, summarizer: GeminiSummarizer, scraping_session_id: int, num_pages: int = 2) -> Dict:
-    """
-    Scrape articles from Qafqazinfo.az (economy section) asynchronously
-
-    Args:
-        db: Database instance
-        summarizer: GeminiSummarizer instance
-        scraping_session_id: ID of the current scraping session
-        num_pages: Number of pages to scrape
-
-    Returns:
-        Dictionary with scraping statistics and new articles
-    """
-    print("\n" + "=" * 60)
-    print("SCRAPING QAFQAZINFO.AZ")
-    print("=" * 60)
-
-    total_saved = 0
-    new_articles = []
-
-    async with QafqazinfoAzScraper() as scraper:
-        articles = await scraper.scrape_all(num_pages=num_pages, batch_size=10)
-
-        total_found = len(articles)
-        total_scraped = total_found
-        total_skipped = 0
-
-        # Save articles to database
-        for article in articles:
-            # Check if article already exists
-            if db.article_exists(article['url']):
-                total_skipped += 1
-                continue
-
-            # Save to database
-            article_id = db.insert_article(article, scraping_session_id)
-            if article_id:
-                total_saved += 1
-                new_articles.append(article)
-
-    print("\n" + "=" * 60)
-    print(f"QAFQAZINFO.AZ SUMMARY")
-    print(f"Total found: {total_found}")
-    print(f"Total scraped: {total_scraped}")
-    print(f"Total saved to DB: {total_saved}")
-    print(f"Total skipped: {total_skipped}")
-    print("=" * 60)
-
-    return {
-        'name': 'Qafqazinfo.az',
-        'total': total_found,
-        'scraped': total_scraped,
-        'saved': total_saved,
-        'skipped': total_skipped,
-        'new_articles': new_articles
-    }
-
-
-async def scrape_oxu_az(db: Database, summarizer: GeminiSummarizer, scraping_session_id: int, num_pages: int = 2) -> Dict:
-    """
-    Scrape articles from Oxu.az (economy section) asynchronously
-
-    Args:
-        db: Database instance
-        summarizer: GeminiSummarizer instance
-        scraping_session_id: ID of the current scraping session
-        num_pages: Number of pages to scrape
-
-    Returns:
-        Dictionary with scraping statistics and new articles
-    """
-    print("\n" + "=" * 60)
-    print("SCRAPING OXU.AZ")
-    print("=" * 60)
-
-    total_saved = 0
-    new_articles = []
-
-    async with OxuAzScraper() as scraper:
-        articles = await scraper.scrape_all(num_pages=num_pages, batch_size=10)
-
-        total_found = len(articles)
-        total_scraped = total_found
-        total_skipped = 0
-
-        # Save articles to database
-        for article in articles:
-            # Check if article already exists
-            if db.article_exists(article['url']):
-                total_skipped += 1
-                continue
-
-            # Save to database
-            article_id = db.insert_article(article, scraping_session_id)
-            if article_id:
-                total_saved += 1
-                new_articles.append(article)
-
-    print("\n" + "=" * 60)
-    print(f"OXU.AZ SUMMARY")
-    print(f"Total found: {total_found}")
-    print(f"Total scraped: {total_scraped}")
-    print(f"Total saved to DB: {total_saved}")
-    print(f"Total skipped: {total_skipped}")
-    print("=" * 60)
-
-    return {
-        'name': 'Oxu.az',
-        'total': total_found,
-        'scraped': total_scraped,
-        'saved': total_saved,
+        'scraped': total_found,
+        'saved': len(new_articles),
         'skipped': total_skipped,
         'new_articles': new_articles
     }
 
 
 async def main():
-    """Main async function to run all scrapers"""
+    """Main async function to run all scrapers with transactional DB saves"""
     print("\n" + "=" * 60)
-    print("ASYNC NEWS SCRAPER STARTED")
+    print("ASYNC NEWS SCRAPER STARTED (TRANSACTIONAL MODE)")
     print("=" * 60)
 
     # Initialize Telegram reporter and summarizer
@@ -632,8 +101,7 @@ async def main():
     sources_stats = []
     all_new_articles = []
     errors = []
-
-    # Skip start notification for public channel (no need to announce processing)
+    end_time = None
 
     # Initialize database connection
     db = Database()
@@ -644,126 +112,99 @@ async def main():
         telegram.send_error_alert(error_msg)
         return
 
-    session_summary = None
-    end_time = None
-    scraping_session_id = None
-
     try:
-        # Create scraping session record FIRST (placeholder)
-        print("\n[INFO] Creating scraping session...")
-        placeholder_summary = {
-            'summary': 'Scraping in progress...',
-            'articles_count': 0,
-            'sources_count': 10,
-            'new_articles_count': 0,
-            'scraping_duration_seconds': 0
-        }
-        scraping_session_id = db.insert_scraping_summary(placeholder_summary)
+        print("\n[INFO] PHASE 1: SCRAPING ALL SOURCES (no DB saves yet)...")
 
-        if scraping_session_id:
-            print(f"[SUCCESS] Created scraping session (ID: {scraping_session_id})")
-        else:
-            print("[ERROR] Failed to create scraping session, articles won't be linked")
+        # Scrape all sources (without saving to DB)
+        sources_stats.append(await scrape_source(BankerAzScraper, "Banker.az", db, num_pages=2))
+        sources_stats.append(await scrape_source(MarjaAzScraper, "Marja.az", db, num_pages=2))
+        sources_stats.append(await scrape_source(ReportAzScraper, "Report.az", db, num_pages=1))
+        sources_stats.append(await scrape_source(FedAzScraper, "Fed.az", db, num_pages=2))
+        sources_stats.append(await scrape_source(SonxeberAzScraper, "Sonxeber.az", db, num_pages=2))
+        sources_stats.append(await scrape_source(IqtisadiyyatAzScraper, "Iqtisadiyyat.az", db, num_pages=2))
+        sources_stats.append(await scrape_source(TrendAzScraper, "Trend.az", db, num_pages=1))
+        sources_stats.append(await scrape_source(ApaAzScraper, "APA.az", db, num_pages=2))
+        sources_stats.append(await scrape_source(QafqazinfoAzScraper, "Qafqazinfo.az", db, num_pages=2))
+        sources_stats.append(await scrape_source(OxuAzScraper, "Oxu.az", db, num_pages=2))
 
-        # Scrape Banker.az - 2 pages, all articles
-        banker_stats = await scrape_banker_az(db, summarizer, scraping_session_id, num_pages=2)
-        sources_stats.append(banker_stats)
-        all_new_articles.extend(banker_stats.get('new_articles', []))
-
-        # Scrape Marja.az - 2 pages, all articles
-        marja_stats = await scrape_marja_az(db, summarizer, scraping_session_id, num_pages=2)
-        sources_stats.append(marja_stats)
-        all_new_articles.extend(marja_stats.get('new_articles', []))
-
-        # Scrape Report.az - 1 page, all articles
-        report_stats = await scrape_report_az(db, summarizer, scraping_session_id, num_pages=1)
-        sources_stats.append(report_stats)
-        all_new_articles.extend(report_stats.get('new_articles', []))
-
-        # Scrape Fed.az - 2 pages per category, all articles
-        fed_stats = await scrape_fed_az(db, summarizer, scraping_session_id, num_pages=2)
-        sources_stats.append(fed_stats)
-        all_new_articles.extend(fed_stats.get('new_articles', []))
-
-        # Scrape Sonxeber.az - 2 pages, all articles
-        sonxeber_stats = await scrape_sonxeber_az(db, summarizer, scraping_session_id, num_pages=2)
-        sources_stats.append(sonxeber_stats)
-        all_new_articles.extend(sonxeber_stats.get('new_articles', []))
-
-        # Scrape Iqtisadiyyat.az - 2 pages per category, all articles
-        iqtisadiyyat_stats = await scrape_iqtisadiyyat_az(db, summarizer, scraping_session_id, num_pages=2)
-        sources_stats.append(iqtisadiyyat_stats)
-        all_new_articles.extend(iqtisadiyyat_stats.get('new_articles', []))
-
-        # Scrape Trend.az - 1 page, all articles
-        trend_stats = await scrape_trend_az(db, summarizer, scraping_session_id, num_pages=1)
-        sources_stats.append(trend_stats)
-        all_new_articles.extend(trend_stats.get('new_articles', []))
-
-        # Scrape APA.az - 2 pages, all articles
-        apa_stats = await scrape_apa_az(db, summarizer, scraping_session_id, num_pages=2)
-        sources_stats.append(apa_stats)
-        all_new_articles.extend(apa_stats.get('new_articles', []))
-
-        # Scrape Qafqazinfo.az - 2 pages, all articles
-        qafqazinfo_stats = await scrape_qafqazinfo_az(db, summarizer, scraping_session_id, num_pages=2)
-        sources_stats.append(qafqazinfo_stats)
-        all_new_articles.extend(qafqazinfo_stats.get('new_articles', []))
-
-        # Scrape Oxu.az - 2 pages, all articles
-        oxu_stats = await scrape_oxu_az(db, summarizer, scraping_session_id, num_pages=2)
-        sources_stats.append(oxu_stats)
-        all_new_articles.extend(oxu_stats.get('new_articles', []))
-
-        end_time = datetime.now(timezone.utc)
+        # Collect all new articles
+        for stats in sources_stats:
+            all_new_articles.extend(stats.get('new_articles', []))
 
         print("\n" + "=" * 60)
-        print("ASYNC NEWS SCRAPER COMPLETED")
+        print("SCRAPING PHASE COMPLETED")
         print("=" * 60)
 
         # Calculate totals
         total_found = sum(s['total'] for s in sources_stats)
-        total_scraped = sum(s['scraped'] for s in sources_stats)
         total_saved = sum(s['saved'] for s in sources_stats)
-        total_skipped = sum(s['skipped'] for s in sources_stats)
 
-        # Create comprehensive session summary if there are new articles
-        if all_new_articles and scraping_session_id:
-            print(f"\n[INFO] Creating comprehensive summary for {len(all_new_articles)} new articles...")
-            session_summary = summarizer.create_session_summary(all_new_articles, sources_stats)
+        print(f"Total articles found: {total_found}")
+        print(f"Total new articles: {total_saved}")
 
-            # Update session summary in database (BEFORE closing connection)
-            if session_summary:
-                duration = (end_time - start_time).total_seconds()
-                summary_data = {
-                    'summary': session_summary,
-                    'articles_count': total_found,
-                    'new_articles_count': total_saved,
-                    'scraping_duration_seconds': duration
-                }
-                db.update_scraping_summary(scraping_session_id, summary_data)
-            else:
-                # Summarizer failed - mark session as failed
-                print("\n[WARNING] Summary creation failed, marking session...")
-                duration = (end_time - start_time).total_seconds()
-                summary_data = {
-                    'summary': 'AI summary creation failed. Articles collected but not analyzed.',
-                    'articles_count': total_found,
-                    'new_articles_count': total_saved,
-                    'scraping_duration_seconds': duration
-                }
-                db.update_scraping_summary(scraping_session_id, summary_data)
-        elif scraping_session_id and not all_new_articles:
-            # No new articles, update placeholder with zero counts
-            print("\n[INFO] No new articles found, updating session with zero counts...")
-            duration = (end_time - start_time).total_seconds()
-            summary_data = {
-                'summary': 'No new articles found in this scraping session.',
-                'articles_count': total_found,
-                'new_articles_count': 0,
-                'scraping_duration_seconds': duration
-            }
-            db.update_scraping_summary(scraping_session_id, summary_data)
+        # Check if we have new articles
+        if not all_new_articles:
+            print("\n[WARNING] No new articles found - aborting (nothing to save)")
+            end_time = datetime.now(timezone.utc)
+            errors.append("No new articles found")
+            return
+
+        print(f"\n[INFO] PHASE 2: CREATING AI SUMMARY for {len(all_new_articles)} articles...")
+
+        # Create AI summary
+        session_summary = summarizer.create_session_summary(all_new_articles, sources_stats)
+
+        if not session_summary:
+            print("\n[ERROR] AI summary creation FAILED - aborting (nothing saved to DB)")
+            end_time = datetime.now(timezone.utc)
+            errors.append("AI summary creation failed - Gemini error or quota exhausted")
+            telegram.send_error_alert("Scraping failed: AI summary creation failed")
+            return
+
+        # Check if summary indicates failure (insufficient banking news)
+        failure_keywords = [
+            "kifayət qədər xəbər tapılmadı",
+            "heç bir xəbər tapılmadı",
+            "No new articles",
+            "Məlumat yoxdur"
+        ]
+
+        if any(keyword in session_summary for keyword in failure_keywords):
+            print("\n[WARNING] AI summary indicates insufficient banking news - aborting")
+            end_time = datetime.now(timezone.utc)
+            errors.append("Insufficient banking-relevant articles")
+            return
+
+        print("[SUCCESS] AI summary created successfully")
+
+        print(f"\n[INFO] PHASE 3: SAVING TO DATABASE (transactional)...")
+
+        # Calculate duration
+        end_time = datetime.now(timezone.utc)
+        duration = (end_time - start_time).total_seconds()
+
+        # Prepare summary data
+        summary_data = {
+            'summary': session_summary,
+            'articles_count': total_found,
+            'sources_count': len(sources_stats),
+            'new_articles_count': total_saved,
+            'scraping_duration_seconds': duration
+        }
+
+        # Save everything in one transaction
+        session_id = db.save_complete_session(all_new_articles, summary_data)
+
+        if not session_id:
+            print("\n[ERROR] Database save FAILED - all changes rolled back")
+            errors.append("Database transaction failed - rolled back")
+            telegram.send_error_alert("Scraping failed: Database save failed (rolled back)")
+            return
+
+        print(f"\n[SUCCESS] ✅ Complete session saved to DB (Session ID: {session_id})")
+        print(f"  - {len(all_new_articles)} articles saved")
+        print(f"  - AI summary created and saved")
+        print(f"  - Duration: {duration:.1f}s")
 
     except KeyboardInterrupt:
         print("\n\n[INFO] Scraping interrupted by user")
@@ -802,7 +243,7 @@ async def main():
             'total_scraped': total_scraped,
             'total_saved': total_saved,
             'total_skipped': total_skipped,
-            'session_summary': session_summary,
+            'session_summary': session_summary if 'session_summary' in locals() else None,
             'errors': errors
         }
 

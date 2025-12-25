@@ -155,6 +155,99 @@ class Database:
                 inserted_count += 1
         return inserted_count
 
+    def save_complete_session(self, articles: List[Dict], summary_data: Dict) -> Optional[int]:
+        """
+        Save a complete scraping session (summary + articles) in a single transaction.
+        If anything fails, everything is rolled back.
+
+        Args:
+            articles: List of article dictionaries to save
+            summary_data: Dictionary with summary data:
+                - summary: str (comprehensive summary text)
+                - articles_count: int (total articles found)
+                - sources_count: int (number of sources)
+                - new_articles_count: int (new articles saved)
+                - scraping_duration_seconds: float (optional)
+
+        Returns:
+            Session ID if successful, None if anything failed (with full rollback)
+        """
+        try:
+            # Ensure connection is alive
+            if not self.ensure_connection():
+                print("[ERROR] Failed to establish database connection")
+                return None
+
+            # Start transaction
+            print("[INFO] Starting database transaction...")
+
+            # Step 1: Create scraping session
+            query = sql.SQL("""
+                INSERT INTO news.scraping_summaries
+                (summary, articles_count, sources_count, new_articles_count, scraping_duration_seconds)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id
+            """)
+
+            self.cursor.execute(query, (
+                summary_data.get('summary'),
+                summary_data.get('articles_count'),
+                summary_data.get('sources_count'),
+                summary_data.get('new_articles_count'),
+                summary_data.get('scraping_duration_seconds')
+            ))
+
+            result = self.cursor.fetchone()
+            session_id = result['id'] if result else None
+
+            if not session_id:
+                print("[ERROR] Failed to create session, rolling back...")
+                self.conn.rollback()
+                return None
+
+            print(f"[SUCCESS] Created scraping session (ID: {session_id})")
+
+            # Step 2: Insert all articles with session ID
+            articles_saved = 0
+            article_query = sql.SQL("""
+                INSERT INTO news.articles (title, content, source, url, published_date, language, scraping_session_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (url) DO UPDATE
+                SET title = EXCLUDED.title,
+                    content = EXCLUDED.content,
+                    published_date = EXCLUDED.published_date,
+                    scraping_session_id = EXCLUDED.scraping_session_id,
+                    updated_at = CURRENT_TIMESTAMP
+                RETURNING id
+            """)
+
+            for article in articles:
+                self.cursor.execute(article_query, (
+                    article.get('title'),
+                    article.get('content'),
+                    article.get('source'),
+                    article.get('url'),
+                    article.get('published_date'),
+                    article.get('language', 'az'),
+                    session_id
+                ))
+                articles_saved += 1
+
+            print(f"[SUCCESS] Inserted {articles_saved} articles")
+
+            # Commit transaction
+            self.conn.commit()
+            print(f"[SUCCESS] Transaction committed - session {session_id} saved successfully")
+
+            return session_id
+
+        except Exception as e:
+            print(f"[ERROR] Failed to save session: {e}")
+            if self.conn and not self.conn.closed:
+                print("[WARNING] Rolling back transaction...")
+                self.conn.rollback()
+            return None
+
     def article_exists(self, url: str) -> bool:
         """Check if an article with the given URL already exists"""
         try:
