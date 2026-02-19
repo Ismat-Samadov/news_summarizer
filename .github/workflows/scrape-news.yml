@@ -3,9 +3,9 @@ name: Daily News Scraper
 on:
   # Run 3 times daily at 08:00, 12:00, and 16:00 AZT (UTC+4)
   schedule:
-    - cron: '0 4 * * *'   # 04:00 UTC = 08:00 AZT
-    - cron: '0 8 * * *'   # 08:00 UTC = 12:00 AZT
-    - cron: '0 12 * * *'  # 12:00 UTC = 16:00 AZT
+    # - cron: '0 4 * * *'   # 04:00 UTC = 08:00 AZT
+    # - cron: '0 8 * * *'   # 08:00 UTC = 12:00 AZT
+    # - cron: '0 12 * * *'  # 12:00 UTC = 16:00 AZT
   # Allow manual trigger for testing
   workflow_dispatch:
 
