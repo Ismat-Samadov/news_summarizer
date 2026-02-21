@@ -12,7 +12,8 @@ env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
 # Database Configuration
-DATABASE_URL = os.getenv('DATABASE', '')
+# Support both DATABASE and DATABASE_URL for flexibility in environments.
+DATABASE_URL = os.getenv('DATABASE') or os.getenv('DATABASE_URL') or ''
 
 # Gemini API Configuration
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
@@ -47,4 +48,7 @@ TIMEZONE = 'Asia/Baku'
 
 # Validation
 if not DATABASE_URL:
-    raise ValueError("DATABASE environment variable is not set in .env file")
+    raise ValueError(
+        "Database connection string is missing. Set DATABASE or DATABASE_URL "
+        "in the environment or in the .env file."
+    )
