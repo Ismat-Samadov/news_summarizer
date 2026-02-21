@@ -161,6 +161,21 @@ class MetbuatScraper(BaseScraper):
                     content_parts = [extract_text(p) for p in paragraphs if len(extract_text(p)) > 20]
                     content = '\n\n'.join(content_parts)
 
+            # Find publication date - Metbuat uses format "12:51 21 Fevral 2026"
+            published_at = None
+            date_pattern = re.compile(
+                r'(\d{1,2}:\d{2})\s+(\d+\s+(?:Yanvar|Fevral|Mart|Aprel|May|İyun|İyul|Avqust|Sentyabr|Oktyabr|Noyabr|Dekabr)\s+\d{4})',
+                re.IGNORECASE
+            )
+            date_text = soup.find(text=date_pattern)
+            if date_text:
+                match = date_pattern.search(date_text)
+                if match:
+                    time_part = match.group(1)  # "12:51"
+                    date_part = match.group(2)  # "21 Fevral 2026"
+                    full_date_str = f"{date_part} {time_part}"
+                    published_at = parse_azerbaijani_date(full_date_str)
+
             # Find author
             author = None
             author_selectors = [
@@ -199,7 +214,7 @@ class MetbuatScraper(BaseScraper):
                 if numbers:
                     view_count = int(numbers[0])
 
-            return {
+            result = {
                 'content': content,
                 'author': author,
                 'view_count': view_count,
@@ -207,6 +222,12 @@ class MetbuatScraper(BaseScraper):
                     'category': category
                 }
             }
+
+            # Add published_at if found
+            if published_at:
+                result['published_at'] = published_at
+
+            return result
 
         except Exception as e:
             logger.error(f"Error parsing article detail: {e}")

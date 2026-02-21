@@ -171,6 +171,20 @@ class SonxeberScraper(BaseScraper):
                     content_parts = [extract_text(p) for p in paragraphs if len(extract_text(p)) > 20]
                     content = '\n\n'.join(content_parts)
 
+            # Find publication date - look for "Tarix: {date}" pattern
+            published_at = None
+            date_pattern = re.compile(r'Tarix:\s*(.+)', re.IGNORECASE)
+            date_text = soup.find(text=date_pattern)
+            if date_text:
+                match = date_pattern.search(date_text)
+                if match:
+                    date_str = match.group(1).strip()
+                    # Add current year if not present
+                    if len(date_str.split()) == 2:
+                        from datetime import datetime
+                        date_str = f"{date_str} {datetime.now().year}"
+                    published_at = parse_azerbaijani_date(date_str)
+
             # Find author
             author = None
             author_elem = soup.find(['span', 'div', 'p'], class_=re.compile(r'author|writer|muellif'))
@@ -183,13 +197,19 @@ class SonxeberScraper(BaseScraper):
             if category_elem:
                 category = extract_text(category_elem)
 
-            return {
+            result = {
                 'content': content,
                 'author': author,
                 'metadata': {
                     'category': category
                 }
             }
+
+            # Add published_at if found
+            if published_at:
+                result['published_at'] = published_at
+
+            return result
 
         except Exception as e:
             logger.error(f"Error parsing article detail: {e}")

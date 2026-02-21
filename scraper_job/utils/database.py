@@ -165,8 +165,8 @@ class DatabaseManager:
 
     def insert_article(self, article_data: Dict) -> Optional[str]:
         """
-        Insert a new article into the database
-        Returns article UUID if successful, None if duplicate
+        Insert a new article into the database or update if exists with new data
+        Returns article UUID if successful, None if no changes
         """
         try:
             with self.get_connection() as conn:
@@ -189,7 +189,14 @@ class DatabaseManager:
                             %(author)s, %(published_at)s, %(view_count)s, %(is_processed)s,
                             %(content_hash)s, %(metadata)s
                         )
-                        ON CONFLICT (source_id, source_article_id) DO NOTHING
+                        ON CONFLICT (source_id, source_article_id) DO UPDATE SET
+                            content = COALESCE(EXCLUDED.content, articles.content),
+                            author = COALESCE(EXCLUDED.author, articles.author),
+                            published_at = COALESCE(EXCLUDED.published_at, articles.published_at),
+                            is_processed = CASE WHEN EXCLUDED.is_processed THEN TRUE ELSE articles.is_processed END,
+                            content_hash = COALESCE(EXCLUDED.content_hash, articles.content_hash),
+                            metadata = COALESCE(EXCLUDED.metadata, articles.metadata),
+                            updated_at = CURRENT_TIMESTAMP
                         RETURNING id
                         """,
                         {
@@ -211,14 +218,10 @@ class DatabaseManager:
                         }
                     )
 
-                    if cur.rowcount > 0:
-                        article_id = cur.fetchone()[0]
-                        conn.commit()
-                        logger.debug(f"Inserted article: {article_data['title'][:50]}...")
-                        return article_id
-                    else:
-                        logger.debug(f"Article already exists: {article_data.get('source_article_id')}")
-                        return None
+                    article_id = cur.fetchone()[0]
+                    conn.commit()
+                    logger.debug(f"Inserted/updated article: {article_data['title'][:50]}...")
+                    return article_id
 
         except psycopg2.IntegrityError as e:
             logger.warning(f"Duplicate article URL: {article_data['url']}")
