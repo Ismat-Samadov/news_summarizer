@@ -1,7 +1,5 @@
 # News Summarizer
 
-![Scrape News](https://github.com/ismatsamadov/news_summarizer/workflows/Scrape%20News%20Articles/badge.svg)
-
 Automated news scraper and summarizer for Azerbaijani news websites. Scrapes articles from 10 news sources, stores them in PostgreSQL, and generates AI summaries using Google Gemini.
 
 **Automated scraping**: 3 times daily at 09:00, 13:00, and 18:00 UTC via GitHub Actions.
