@@ -44,9 +44,15 @@ class SonxeberScraper(BaseScraper):
         """Parse article listing page"""
         articles = []
 
-        # Find all article links
-        # Look for links that match the pattern /{number}/{slug}
-        article_links = soup.find_all('a', href=re.compile(r'/\d+/[\w-]+'))
+        # Collect all links and filter by URL pattern /{number}/{slug}
+        # Some pages use non-ASCII slugs or wrap titles outside <a>, so be flexible.
+        article_links = []
+        for link in soup.find_all('a', href=True):
+            href = extract_attribute(link, 'href')
+            if not href:
+                continue
+            if re.search(r'/\d+/', href):
+                article_links.append(link)
 
         seen_ids = set()
 
@@ -66,21 +72,28 @@ class SonxeberScraper(BaseScraper):
 
                 seen_ids.add(article_id)
 
-                # Extract title (from link text or nearby heading)
+                # Extract title (from link text, title attribute, or nearby heading)
                 title = extract_text(link)
-                if not title or len(title) < 10:
-                    # Try to find title in parent or nearby elements
-                    parent = link.find_parent(['h1', 'h2', 'h3', 'h4', 'div'])
-                    if parent:
-                        title = extract_text(parent)
+                if not title:
+                    title = extract_attribute(link, 'title')
 
-                if not title or len(title) < 10:
+                if not title or len(title) < 5:
+                    # Try to find title in parent or nearby elements
+                    parent = link.find_parent(['h1', 'h2', 'h3', 'h4', 'div', 'li', 'section', 'article'])
+                    if parent:
+                        heading = parent.find(['h1', 'h2', 'h3', 'h4'])
+                        if heading:
+                            title = extract_text(heading)
+                        if not title:
+                            title = extract_text(parent)
+
+                if not title or len(title) < 5:
                     continue
 
                 # Find image (usually nearby the link)
                 image_url = None
                 # Try to find img in parent container
-                container = link.find_parent(['div', 'article', 'li'])
+                container = link.find_parent(['div', 'article', 'li', 'section'])
                 if container:
                     img = container.find('img')
                     if img:
@@ -94,8 +107,10 @@ class SonxeberScraper(BaseScraper):
                 if container:
                     # Look for date in various possible formats
                     date_candidates = container.find_all(
-                        text=re.compile(r'\d+\s+(yanvar|fevral|mart|aprel|may|iyun|iyul|avqust|sentyabr|oktyabr|noyabr|dekabr)',
-                                        re.IGNORECASE)
+                        text=re.compile(
+                            r'\d+\s+(yanvar|fevral|mart|aprel|may|iyun|iyul|avqust|sentyabr|oktyabr|noyabr|dekabr)',
+                            re.IGNORECASE
+                        )
                     )
                     if date_candidates:
                         date_str = date_candidates[0].strip()
