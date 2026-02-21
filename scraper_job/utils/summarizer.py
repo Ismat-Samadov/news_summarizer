@@ -35,7 +35,7 @@ class NewsSummarizer:
         self.client = genai.Client(api_key=api_key)
 
         # Use a generally available Gemini model
-        self.model_name = 'gemini-2.0-flash-001'
+        self.model_name = 'gemini-3-flash-preview'
 
         # Configure generation settings
         self.generation_config = types.GenerateContentConfig(
