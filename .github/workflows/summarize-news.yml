@@ -39,7 +39,8 @@ jobs:
 
       - name: Generate AI summaries
         env:
-          DATABASE: ${{ secrets.DATABASE_URL }}
+          DATABASE: ${{ secrets.DATABASE }}
+          DATABASE_URL: ${{ secrets.DATABASE }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python -m scraper_job.run_summarizer run \
@@ -49,7 +50,8 @@ jobs:
       - name: Display statistics
         if: always()
         env:
-          DATABASE: ${{ secrets.DATABASE_URL }}
+          DATABASE: ${{ secrets.DATABASE }}
+          DATABASE_URL: ${{ secrets.DATABASE }}
         run: |
           python -m scraper_job.run_scraper stats
 
