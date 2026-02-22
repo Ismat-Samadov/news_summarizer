@@ -31,7 +31,7 @@ CREATE TABLE news_sources (
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    slug VARCHAR(100) NOT NULL,
+    slug VARCHAR(255) NOT NULL, -- Increased from 100 for long category slugs
     source_id INTEGER REFERENCES news_sources(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(slug, source_id)
@@ -42,7 +42,7 @@ CREATE TABLE categories (
 CREATE TABLE articles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     source_id INTEGER NOT NULL REFERENCES news_sources(id) ON DELETE CASCADE,
-    source_article_id VARCHAR(100), -- Original article ID from the source website
+    source_article_id VARCHAR(255), -- Original article ID from the source website (increased from 100 for long slugs)
     title TEXT NOT NULL,
     url TEXT NOT NULL UNIQUE,
     slug TEXT,

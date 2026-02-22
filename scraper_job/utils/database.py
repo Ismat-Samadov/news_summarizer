@@ -171,6 +171,12 @@ class DatabaseManager:
         try:
             with self.get_connection() as conn:
                 with conn.cursor() as cur:
+                    # Truncate source_article_id if it exceeds 255 characters
+                    if article_data.get('source_article_id') and len(article_data['source_article_id']) > 255:
+                        original_id = article_data['source_article_id']
+                        article_data['source_article_id'] = original_id[:255]
+                        logger.warning(f"Truncated source_article_id from {len(original_id)} to 255 chars: {original_id[:50]}...")
+
                     # Generate content hash if content provided
                     content_hash = None
                     if article_data.get('content'):
