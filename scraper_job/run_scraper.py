@@ -94,11 +94,19 @@ def run_scraper(
 
 def run_all_scrapers(max_pages: int = 3, scrape_details: bool = False):
     """Run all available scrapers"""
+    import time
+
     logger.info(f"Running all scrapers ({len(SCRAPERS)} sources)")
 
     results = {}
-    for source_domain in SCRAPERS.keys():
+    for i, source_domain in enumerate(SCRAPERS.keys()):
         try:
+            # Add delay between scrapers to avoid rate limiting
+            if i > 0:
+                delay = 5  # 5 seconds between scrapers
+                logger.info(f"Waiting {delay} seconds before next scraper...")
+                time.sleep(delay)
+
             stats = run_scraper(
                 source_domain=source_domain,
                 max_pages=max_pages,
