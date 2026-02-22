@@ -1,6 +1,6 @@
-# News Summarizer
+# News Scraper
 
-Automated news scraper and summarizer for Azerbaijani news websites. Scrapes articles from 10 news sources, stores them in PostgreSQL, and generates AI summaries using Google Gemini.
+Automated news scraper for Azerbaijani news websites. Scrapes articles from multiple news sources and stores them in PostgreSQL.
 
 **Automated scraping**: 3 times daily at 09:00, 13:00, and 18:00 UTC via GitHub Actions.
 
@@ -58,7 +58,6 @@ Create a `.env` file in the project root:
 
 ```env
 DATABASE=postgresql://user:password@host/database
-GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 ### 3. Initialize Database
@@ -71,10 +70,10 @@ psql "$DATABASE" -f scraper_job/scripts/schema.sql
 
 ### 4. Set Up GitHub Actions (Optional for Automation)
 
-For automated scraping, see [GitHub Actions Setup Guide](.github/SETUP.md).
+For automated scraping, see [GitHub Actions Setup Guide](.github/workflows/scrape-news.yml).
 
 **Quick setup:**
-1. Add repository secrets: `DATABASE_URL` and `GEMINI_API_KEY`
+1. Add repository secret: `DATABASE_URL`
 2. Enable GitHub Actions in your repository
 3. Workflows will run automatically 3x daily (09:00, 13:00, 18:00 UTC)
 
@@ -95,24 +94,8 @@ python -m scraper_job.run_scraper stats
 # List available scrapers
 python -m scraper_job.run_scraper list
 
-# Scrape with full article content (required for AI summarization)
+# Scrape with full article content
 python -m scraper_job.run_scraper run -s metbuat.az -p 2 --details
-```
-
-### AI Summarization Commands
-
-```bash
-# Generate summaries for all unsummarized articles
-python -m scraper_job.run_summarizer run
-
-# Generate summaries for specific batch size
-python -m scraper_job.run_summarizer run --batch-size 50
-
-# Test summarizer with one article
-python -m scraper_job.run_summarizer test
-
-# Show summarization statistics
-python -m scraper_job.run_summarizer stats
 ```
 
 ### Command Options
@@ -156,7 +139,6 @@ print(f"Scraped {stats['articles_new']} new articles")
 - `news.news_sources` - News website configurations
 - `news.articles` - Scraped articles
 - `news.categories` - Article categories
-- `news.summaries` - AI-generated summaries
 - `news.scrape_jobs` - Job execution tracking
 - `news.scrape_errors` - Error logging
 
@@ -240,7 +222,7 @@ Logs are stored in `logs/` directory:
 ## Features
 
 ### Current Features
-- ✅ Multi-source web scraping
+- ✅ Multi-source web scraping (5 news sources)
 - ✅ PostgreSQL database storage
 - ✅ Deduplication by content hash
 - ✅ Job tracking and error logging
@@ -251,49 +233,10 @@ Logs are stored in `logs/` directory:
 - ✅ **Automated workflows with scheduled runs**
 
 ### Upcoming Features
-- ✅ **AI summarization (Gemini API)**
-- ✅ **Named entity recognition**
-- ✅ **Sentiment analysis**
+- ⏳ Additional news sources (5 more planned)
 - ⏳ Next.js frontend
 - ⏳ Vercel deployment
-
-## AI Summarization
-
-The project includes AI-powered summarization using **Google Gemini 2.0 Flash** (free tier).
-
-### Features
-
-- **Three Summary Lengths**: Short (1-2 sentences), Medium (paragraph), Long (detailed)
-- **Key Points Extraction**: Automatically identifies main points
-- **Named Entity Recognition**: Extracts people, organizations, and locations
-- **Topic Classification**: Identifies main topics and themes
-- **Sentiment Analysis**: Classifies sentiment as positive, negative, or neutral
-- **Confidence Scoring**: Provides quality assessment for each summary
-- **Azerbaijani Language Support**: All summaries generated in Azerbaijani
-
-### Free Tier Limits
-
-- **Model**: Gemini 2.0 Flash Exp
-- **Daily Limit**: 1,000 requests/day
-- **Context**: 1 million tokens
-- **Cost**: $0.00 (completely free!)
-
-### Usage
-
-```bash
-# Scrape with full content (required for summarization)
-python -m scraper_job.run_scraper run -s sonxeber.az -p 2 --details
-
-# Generate summaries
-python -m scraper_job.run_summarizer run --batch-size 100
-
-# Test with one article
-python -m scraper_job.run_summarizer test
-```
-
-### Automated Workflow
-
-Summaries are generated automatically 30 minutes after each scraping run via GitHub Actions.
+- ⏳ REST API for article access
 
 ## Development
 
@@ -374,10 +317,8 @@ pytest
 
 ```
 Articles
-   ├─> is_processed = FALSE (initial scrape)
-   ├─> is_processed = TRUE  (full content scraped)
-   ├─> is_summarized = FALSE
-   └─> is_summarized = TRUE (AI summary generated)
+   ├─> is_processed = FALSE (initial scrape - metadata only)
+   └─> is_processed = TRUE  (full content scraped)
 ```
 
 ## Configuration

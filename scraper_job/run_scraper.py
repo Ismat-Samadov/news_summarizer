@@ -15,6 +15,7 @@ from scraper_job.scrapers.metbuat_scraper import MetbuatScraper
 from scraper_job.scrapers.azertag_scraper import AzertagScraper
 from scraper_job.scrapers.apa_scraper import APAScraper
 from scraper_job.scrapers.report_scraper import ReportScraper
+from scraper_job.scrapers.modern_scraper import ModernScraper
 
 # Configure logger
 logger.remove()
@@ -39,6 +40,7 @@ SCRAPERS = {
     'azertag.az': AzertagScraper,
     'apa.az': APAScraper,
     'report.az': ReportScraper,
+    'modern.az': ModernScraper,
     # Add more scrapers as they are implemented
 }
 
