@@ -237,10 +237,10 @@ Logs are stored in `logs/` directory:
 - ✅ **GitHub Actions automation (3x daily)**
 - ✅ **Automated workflows with scheduled runs**
 - ✅ **Can run forever without storage costs**
+- ✅ **JavaScript rendering with Playwright** - Handles dynamic content
 
 ### Upcoming Features
 - ⏳ AJAX/API-based scrapers (requires API endpoint detection)
-- ⏳ Dynamic content scraping (requires Selenium/Playwright)
 - ⏳ Next.js frontend
 - ⏳ Vercel deployment
 - ⏳ REST API for article access
@@ -364,6 +364,36 @@ See `scraper_job/config.py` for all configuration options:
 - User agent rotation
 - Database schema name
 - Logging configuration
+
+### JavaScript Rendering (Playwright)
+
+The scraper supports JavaScript rendering using Playwright for websites that load content dynamically.
+
+**Enable Playwright:**
+```bash
+# Set environment variable
+export USE_PLAYWRIGHT=true
+
+# Run scraper
+python -m scraper_job.run_scraper run -s sonxeber.az -p 3
+```
+
+**How it works:**
+- When `USE_PLAYWRIGHT=true`, the scraper uses a headless Chromium browser
+- Waits for network to be idle before extracting content
+- Handles JavaScript-rendered content that standard requests cannot access
+- Automatically falls back to requests if Playwright is unavailable
+
+**GitHub Actions:**
+- Playwright is automatically enabled in GitHub Actions workflows
+- Chromium browser is installed during workflow setup
+- All scrapers use JavaScript rendering by default in CI/CD
+
+**Why it's needed:**
+- Many Azerbaijani news sites serve skeleton HTML to servers
+- JavaScript loads article links and content dynamically
+- Without Playwright, GitHub Actions would receive empty HTML (0 articles)
+- Local environments may work without Playwright due to different server responses
 
 ## License
 

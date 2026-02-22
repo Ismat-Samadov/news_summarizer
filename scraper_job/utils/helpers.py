@@ -9,11 +9,27 @@ from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 from loguru import logger
+import os
 
 from scraper_job.config import (
     USER_AGENTS, REQUEST_TIMEOUT, REQUEST_DELAY,
     MAX_RETRIES, RETRY_DELAY
 )
+
+# Check if we should use Playwright (for JavaScript-rendered sites)
+USE_PLAYWRIGHT = os.getenv('USE_PLAYWRIGHT', 'false').lower() == 'true'
+
+if USE_PLAYWRIGHT:
+    try:
+        from playwright.sync_api import sync_playwright
+        PLAYWRIGHT_AVAILABLE = True
+        logger.info("Playwright enabled for JavaScript rendering")
+    except ImportError:
+        PLAYWRIGHT_AVAILABLE = False
+        logger.warning("Playwright not available, falling back to requests")
+        USE_PLAYWRIGHT = False
+else:
+    PLAYWRIGHT_AVAILABLE = False
 
 
 def get_random_user_agent() -> str:
@@ -39,6 +55,63 @@ def get_headers() -> dict:
     }
 
 
+def fetch_page_with_playwright(
+    url: str,
+    timeout: int = REQUEST_TIMEOUT
+) -> Optional[requests.Response]:
+    """
+    Fetch a web page using Playwright for JavaScript rendering
+
+    Args:
+        url: URL to fetch
+        timeout: Request timeout in seconds
+
+    Returns:
+        Response-like object with rendered HTML or None if failed
+    """
+    if not PLAYWRIGHT_AVAILABLE:
+        logger.error("Playwright not available, cannot fetch with JS rendering")
+        return None
+
+    try:
+        time.sleep(REQUEST_DELAY)  # Be respectful to servers
+
+        with sync_playwright() as p:
+            # Launch browser
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+
+            # Set user agent
+            page.set_extra_http_headers({
+                'User-Agent': get_random_user_agent()
+            })
+
+            # Navigate and wait for network to be idle
+            logger.debug(f"Fetching with Playwright: {url}")
+            page.goto(url, timeout=timeout * 1000, wait_until='networkidle')
+
+            # Get rendered HTML
+            content = page.content()
+            browser.close()
+
+            logger.debug(f"Successfully fetched with Playwright: {url}")
+
+            # Create a requests-like response object
+            class PlaywrightResponse:
+                def __init__(self, text):
+                    self.text = text
+                    self.status_code = 200
+
+                def raise_for_status(self):
+                    pass
+
+            return PlaywrightResponse(content)
+
+    except Exception as e:
+        logger.error(f"Playwright fetch failed for {url}: {e}")
+        return None
+
+
 def fetch_page(
     url: str,
     headers: Optional[dict] = None,
@@ -57,6 +130,12 @@ def fetch_page(
     Returns:
         Response object or None if failed
     """
+    # Use Playwright if enabled (for JavaScript-rendered sites)
+    if USE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
+        logger.debug(f"Using Playwright for JavaScript rendering: {url}")
+        return fetch_page_with_playwright(url, timeout)
+
+    # Fall back to requests for static HTML
     if headers is None:
         headers = get_headers()
 

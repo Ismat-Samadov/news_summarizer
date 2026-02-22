@@ -38,6 +38,11 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install Playwright browsers
+        run: |
+          playwright install chromium
+          playwright install-deps chromium
+
       - name: Create logs directory
         run: mkdir -p logs
 
@@ -45,6 +50,7 @@ jobs:
         env:
           DATABASE: ${{ secrets.DATABASE }}
           DATABASE_URL: ${{ secrets.DATABASE }}
+          USE_PLAYWRIGHT: 'true'
         run: |
           python -m scraper_job.run_scraper run-all \
             --pages ${{ github.event.inputs.max_pages || '3' }} \
