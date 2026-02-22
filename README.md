@@ -33,16 +33,16 @@ news_summarizer/
 Currently implemented scrapers:
 1. **Sonxeber.az** ✅
 2. **Metbuat.az** ✅
+3. **Azertag.az** ✅ (State News Agency)
+4. **APA.az** ✅ (Azerbaijan Press Agency)
+5. **Report.az** ✅
 
 Planned implementations:
-3. Axar.az
-4. News.milli.az
-5. Azertag.az
-6. APA.az
-7. Oxu.az (requires anti-scraping bypass)
-8. Report.az
-9. Xezerxeber.az
-10. Modern.az
+6. Modern.az
+7. Axar.az (requires infinite scroll handling)
+8. News.milli.az (requires AJAX handling)
+9. Xezerxeber.az (requires infinite scroll handling)
+10. Oxu.az (requires anti-scraping bypass)
 
 ## Setup
 

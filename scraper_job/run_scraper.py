@@ -12,6 +12,9 @@ from scraper_job.config import LOG_LEVEL, LOG_FORMAT
 from scraper_job.utils.database import DatabaseManager
 from scraper_job.scrapers.sonxeber_scraper import SonxeberScraper
 from scraper_job.scrapers.metbuat_scraper import MetbuatScraper
+from scraper_job.scrapers.azertag_scraper import AzertagScraper
+from scraper_job.scrapers.apa_scraper import APAScraper
+from scraper_job.scrapers.report_scraper import ReportScraper
 
 # Configure logger
 logger.remove()
@@ -33,6 +36,9 @@ logger.add(
 SCRAPERS = {
     'sonxeber.az': SonxeberScraper,
     'metbuat.az': MetbuatScraper,
+    'azertag.az': AzertagScraper,
+    'apa.az': APAScraper,
+    'report.az': ReportScraper,
     # Add more scrapers as they are implemented
 }
 
