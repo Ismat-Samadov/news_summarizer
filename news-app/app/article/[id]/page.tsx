@@ -2,6 +2,7 @@ import { getArticleById } from '@/lib/db';
 import { formatDistanceToNow } from 'date-fns';
 import { az } from 'date-fns/locale';
 import { notFound } from 'next/navigation';
+import ArticleImage from '@/components/ArticleImage';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,17 +79,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
           {/* Image */}
           {article.image_url && (
-            <div className="relative h-96 bg-gray-200">
-              <img
-                src={article.image_url}
-                alt={article.title}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-            </div>
+            <ArticleImage src={article.image_url} alt={article.title} />
           )}
 
           {/* Excerpt */}

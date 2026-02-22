@@ -3,12 +3,16 @@
 import { formatDistanceToNow } from 'date-fns';
 import { az } from 'date-fns/locale';
 import { Article } from '@/lib/db';
+import Image from 'next/image';
+import { useState } from 'react';
 
 interface ArticleCardProps {
   article: Article;
 }
 
 export default function ArticleCard({ article }: ArticleCardProps) {
+  const [imageError, setImageError] = useState(false);
+
   const publishedDate = article.published_at
     ? formatDistanceToNow(new Date(article.published_at), { addSuffix: true, locale: az })
     : formatDistanceToNow(new Date(article.scraped_at), { addSuffix: true, locale: az });
