@@ -1,10 +1,17 @@
 import { Pool } from 'pg';
 
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
-  }
+  },
+  max: 20, // Maximum number of clients in the pool
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  connectionTimeoutMillis: 2000, // Timeout after 2 seconds
 });
 
 export interface Article {
@@ -92,19 +99,25 @@ export async function getNewsSources() {
   }
 }
 
-export async function isValidSourceId(sourceId: number) {
-  const client = await pool.connect();
+export async function isValidSourceId(sourceId: number): Promise<boolean> {
   try {
-    const query = `
-      SELECT EXISTS(
-        SELECT 1 FROM news.news_sources
-        WHERE id = $1 AND is_active = TRUE
-      ) as exists
-    `;
-    const result = await client.query(query, [sourceId]);
-    return result.rows[0].exists;
-  } finally {
-    client.release();
+    const client = await pool.connect();
+    try {
+      const query = `
+        SELECT EXISTS(
+          SELECT 1 FROM news.news_sources
+          WHERE id = $1 AND is_active = TRUE
+        ) as exists
+      `;
+      const result = await client.query(query, [sourceId]);
+      return result.rows[0]?.exists || false;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error validating source ID:', error);
+    // If validation fails, assume invalid to be safe
+    return false;
   }
 }
 
