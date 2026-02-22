@@ -14,7 +14,10 @@ news_summarizer/
 │   ├── scrapers/           # News source scrapers
 │   │   ├── base_scraper.py
 │   │   ├── sonxeber_scraper.py
-│   │   ├── metbuat_scraper.py
+│   │   ├── apa_scraper.py
+│   │   ├── report_scraper.py
+│   │   ├── modern_scraper.py
+│   │   ├── axar_scraper.py
 │   │   └── ...
 │   ├── utils/              # Utility modules
 │   │   ├── database.py     # Database operations
@@ -32,16 +35,16 @@ news_summarizer/
 
 ## News Sources
 
-Currently implemented scrapers:
+Currently active scrapers (5 sources):
 1. **Sonxeber.az** ✅
-2. **Metbuat.az** ✅
-3. **Azertag.az** ✅ (State News Agency)
-4. **APA.az** ✅ (Azerbaijan Press Agency)
-5. **Report.az** ✅
-6. **Modern.az** ✅
-7. **Axar.az** ✅ (static content only)
+2. **APA.az** ✅ (Azerbaijan Press Agency)
+3. **Report.az** ✅
+4. **Modern.az** ✅
+5. **Axar.az** ✅ (static content only)
 
-Unable to implement (require advanced techniques):
+Unable to implement (anti-scraping measures / advanced techniques required):
+6. **Metbuat.az** ❌ (403 Forbidden - anti-scraping)
+7. **Azertag.az** ❌ (403 Forbidden - State News Agency)
 8. News.milli.az (requires AJAX/API integration)
 9. Xezerxeber.az (requires infinite scroll/Selenium)
 10. Oxu.az (requires anti-scraping bypass - returns 403)
@@ -97,7 +100,7 @@ python -m scraper_job.run_scraper stats
 python -m scraper_job.run_scraper list
 
 # Scrape with full article content
-python -m scraper_job.run_scraper run -s metbuat.az -p 2 --details
+python -m scraper_job.run_scraper run -s apa.az -p 2 --details
 ```
 
 ### Command Options
@@ -223,7 +226,7 @@ Logs are stored in `logs/` directory:
 ## Features
 
 ### Current Features
-- ✅ Multi-source web scraping (7 news sources)
+- ✅ Multi-source web scraping (5 active news sources)
 - ✅ PostgreSQL database storage
 - ✅ **Zero-cost snapshot storage** - Only keeps latest news, deletes old data automatically
 - ✅ Deduplication by content hash
@@ -276,7 +279,7 @@ from scraper_job.scrapers.newsource_scraper import NewSourceScraper
 
 SCRAPERS = {
     'sonxeber.az': SonxeberScraper,
-    'metbuat.az': MetbuatScraper,
+    'apa.az': APAScraper,
     'newsource.az': NewSourceScraper,  # Add here
 }
 ```

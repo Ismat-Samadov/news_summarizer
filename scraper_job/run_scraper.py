@@ -11,8 +11,6 @@ from loguru import logger
 from scraper_job.config import LOG_LEVEL, LOG_FORMAT
 from scraper_job.utils.database import DatabaseManager
 from scraper_job.scrapers.sonxeber_scraper import SonxeberScraper
-from scraper_job.scrapers.metbuat_scraper import MetbuatScraper
-from scraper_job.scrapers.azertag_scraper import AzertagScraper
 from scraper_job.scrapers.apa_scraper import APAScraper
 from scraper_job.scrapers.report_scraper import ReportScraper
 from scraper_job.scrapers.modern_scraper import ModernScraper
@@ -35,10 +33,9 @@ logger.add(
 
 
 # Scraper registry
+# Note: metbuat.az and azertag.az removed due to 403 anti-scraping blocks
 SCRAPERS = {
     'sonxeber.az': SonxeberScraper,
-    'metbuat.az': MetbuatScraper,
-    'azertag.az': AzertagScraper,
     'apa.az': APAScraper,
     'report.az': ReportScraper,
     'modern.az': ModernScraper,
