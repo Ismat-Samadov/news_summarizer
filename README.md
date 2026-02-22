@@ -36,9 +36,9 @@ Currently implemented scrapers:
 3. **Azertag.az** ✅ (State News Agency)
 4. **APA.az** ✅ (Azerbaijan Press Agency)
 5. **Report.az** ✅
+6. **Modern.az** ✅
 
 Planned implementations:
-6. Modern.az
 7. Axar.az (requires infinite scroll handling)
 8. News.milli.az (requires AJAX handling)
 9. Xezerxeber.az (requires infinite scroll handling)
@@ -202,7 +202,6 @@ For detailed setup instructions, see [GitHub Actions Setup Guide](.github/SETUP.
 
 **Required secrets:**
 - `DATABASE_URL` - PostgreSQL connection string
-- `GEMINI_API_KEY` - Google Gemini API key
 
 ### Monitoring
 
@@ -222,7 +221,7 @@ Logs are stored in `logs/` directory:
 ## Features
 
 ### Current Features
-- ✅ Multi-source web scraping (5 news sources)
+- ✅ Multi-source web scraping (6 news sources)
 - ✅ PostgreSQL database storage
 - ✅ Deduplication by content hash
 - ✅ Job tracking and error logging
@@ -233,7 +232,7 @@ Logs are stored in `logs/` directory:
 - ✅ **Automated workflows with scheduled runs**
 
 ### Upcoming Features
-- ⏳ Additional news sources (5 more planned)
+- ⏳ Additional news sources (4 more planned)
 - ⏳ Next.js frontend
 - ⏳ Vercel deployment
 - ⏳ REST API for article access
