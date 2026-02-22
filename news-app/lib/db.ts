@@ -92,6 +92,22 @@ export async function getNewsSources() {
   }
 }
 
+export async function isValidSourceId(sourceId: number) {
+  const client = await pool.connect();
+  try {
+    const query = `
+      SELECT EXISTS(
+        SELECT 1 FROM news.news_sources
+        WHERE id = $1 AND is_active = TRUE
+      ) as exists
+    `;
+    const result = await client.query(query, [sourceId]);
+    return result.rows[0].exists;
+  } finally {
+    client.release();
+  }
+}
+
 export async function getArticleCount(sourceId?: number) {
   const client = await pool.connect();
   try {
@@ -110,22 +126,54 @@ export async function getArticleCount(sourceId?: number) {
   }
 }
 
-export async function searchArticles(searchTerm: string, limit: number = 20) {
+export async function searchArticles(searchTerm: string, limit: number = 20, offset: number = 0, sourceId?: number) {
   const client = await pool.connect();
   try {
-    const query = `
+    let query = `
       SELECT
         a.id, a.source_id, a.title, a.url, a.excerpt,
         a.image_url, a.author, a.published_at, a.scraped_at, a.view_count,
         ns.name as source_name
       FROM news.articles a
       LEFT JOIN news.news_sources ns ON a.source_id = ns.id
-      WHERE a.title ILIKE $1 OR a.excerpt ILIKE $1 OR a.content ILIKE $1
-      ORDER BY a.published_at DESC NULLS LAST, a.scraped_at DESC
-      LIMIT $2
+      WHERE (a.title ILIKE $1 OR a.excerpt ILIKE $1 OR a.content ILIKE $1)
     `;
-    const result = await client.query<Article>(query, [`%${searchTerm}%`, limit]);
+
+    const params: any[] = [`%${searchTerm}%`];
+
+    if (sourceId) {
+      query += ` AND a.source_id = $${params.length + 1}`;
+      params.push(sourceId);
+    }
+
+    query += ` ORDER BY a.published_at DESC NULLS LAST, a.scraped_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+
+    const result = await client.query<Article>(query, params);
     return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getSearchCount(searchTerm: string, sourceId?: number) {
+  const client = await pool.connect();
+  try {
+    let query = `
+      SELECT COUNT(*) as count
+      FROM news.articles
+      WHERE (title ILIKE $1 OR excerpt ILIKE $1 OR content ILIKE $1)
+    `;
+
+    const params: any[] = [`%${searchTerm}%`];
+
+    if (sourceId) {
+      query += ` AND source_id = $${params.length + 1}`;
+      params.push(sourceId);
+    }
+
+    const result = await client.query(query, params);
+    return parseInt(result.rows[0].count);
   } finally {
     client.release();
   }

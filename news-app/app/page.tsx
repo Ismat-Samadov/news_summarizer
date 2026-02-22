@@ -1,6 +1,8 @@
-import { getArticles, getNewsSources, getArticleCount } from '@/lib/db';
+import { getArticles, getNewsSources, getArticleCount, searchArticles, getSearchCount, isValidSourceId } from '@/lib/db';
 import ArticleCard from '@/components/ArticleCard';
 import Pagination from '@/components/Pagination';
+import SearchBar from '@/components/SearchBar';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 300; // Revalidate every 5 minutes
@@ -8,18 +10,40 @@ export const revalidate = 300; // Revalidate every 5 minutes
 const ARTICLES_PER_PAGE = 24;
 
 interface HomeProps {
-  searchParams: { page?: string; source?: string };
+  searchParams: { page?: string; source?: string; q?: string };
 }
 
 export default async function Home({ searchParams }: HomeProps) {
   const currentPage = parseInt(searchParams.page || '1', 10);
-  const sourceId = searchParams.source ? parseInt(searchParams.source, 10) : undefined;
+  let sourceId = searchParams.source ? parseInt(searchParams.source, 10) : undefined;
+  const searchQuery = searchParams.q?.trim();
+
+  // Validate source ID if provided
+  if (sourceId && !isNaN(sourceId)) {
+    const isValid = await isValidSourceId(sourceId);
+    if (!isValid) {
+      // Invalid source ID - redirect to home without source filter
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('q', searchQuery);
+      if (currentPage > 1) params.set('page', currentPage.toString());
+      redirect(params.toString() ? `/?${params.toString()}` : '/');
+    }
+  } else if (sourceId) {
+    // NaN source ID - ignore it
+    sourceId = undefined;
+  }
+
   const offset = (currentPage - 1) * ARTICLES_PER_PAGE;
 
+  // Use search or regular fetch based on query
   const [articles, sources, totalCount] = await Promise.all([
-    getArticles(ARTICLES_PER_PAGE, offset, sourceId),
+    searchQuery
+      ? searchArticles(searchQuery, ARTICLES_PER_PAGE, offset, sourceId)
+      : getArticles(ARTICLES_PER_PAGE, offset, sourceId),
     getNewsSources(),
-    getArticleCount(sourceId),
+    searchQuery
+      ? getSearchCount(searchQuery, sourceId)
+      : getArticleCount(sourceId),
   ]);
 
   const totalPages = Math.ceil(totalCount / ARTICLES_PER_PAGE);
@@ -36,6 +60,10 @@ export default async function Home({ searchParams }: HomeProps) {
             <p className="text-xl text-primary-100 mb-8">
               Ən son xəbərlər bir yerdə • {totalCount} xəbər
             </p>
+
+            {/* Search Bar */}
+            <SearchBar initialQuery={searchQuery} sourceId={sourceId} />
+
             <div className="flex flex-wrap justify-center gap-2">
               {/* All filter */}
               <a
@@ -71,9 +99,16 @@ export default async function Home({ searchParams }: HomeProps) {
       {/* Articles Grid */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">
-            Son Xəbərlər
-          </h2>
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">
+              {searchQuery ? 'Axtarış Nəticələri' : 'Son Xəbərlər'}
+            </h2>
+            {searchQuery && (
+              <p className="text-gray-600 mt-2">
+                &ldquo;{searchQuery}&rdquo; üçün {totalCount} nəticə tapıldı
+              </p>
+            )}
+          </div>
           <div className="flex items-center text-sm text-gray-500">
             <svg className="w-5 h-5 mr-2 text-green-500 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -101,7 +136,12 @@ export default async function Home({ searchParams }: HomeProps) {
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              baseUrl={sourceId ? `/?source=${sourceId}` : '/'}
+              baseUrl={(() => {
+                const params = new URLSearchParams();
+                if (searchQuery) params.set('q', searchQuery);
+                if (sourceId) params.set('source', sourceId.toString());
+                return params.toString() ? `/?${params.toString()}` : '/';
+              })()}
             />
           </>
         )}
