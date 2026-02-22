@@ -37,9 +37,10 @@ export interface NewsSource {
   is_active: boolean;
 }
 
-export async function getArticles(limit: number = 20, offset: number = 0, sourceId?: number) {
-  const client = await pool.connect();
+export async function getArticles(limit: number = 20, offset: number = 0, sourceId?: number): Promise<Article[]> {
+  let client;
   try {
+    client = await pool.connect();
     let query = `
       SELECT
         a.id, a.source_id, a.title, a.url, a.excerpt,
@@ -62,8 +63,11 @@ export async function getArticles(limit: number = 20, offset: number = 0, source
 
     const result = await client.query<Article>(query, params);
     return result.rows;
+  } catch (error) {
+    console.error('Error fetching articles:', error);
+    throw error; // Re-throw to let Next.js handle it
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
@@ -84,18 +88,24 @@ export async function getArticleById(id: string) {
   }
 }
 
-export async function getNewsSources() {
-  const client = await pool.connect();
+export async function getNewsSources(): Promise<NewsSource[]> {
+  let client;
   try {
+    client = await pool.connect();
     const query = `
-      SELECT * FROM news.news_sources
-      WHERE is_active = TRUE
-      ORDER BY name
+      SELECT DISTINCT ns.*
+      FROM news.news_sources ns
+      INNER JOIN news.articles a ON ns.id = a.source_id
+      WHERE ns.is_active = TRUE
+      ORDER BY ns.name
     `;
     const result = await client.query<NewsSource>(query);
     return result.rows;
+  } catch (error) {
+    console.error('Error fetching news sources:', error);
+    throw error;
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
@@ -121,9 +131,10 @@ export async function isValidSourceId(sourceId: number): Promise<boolean> {
   }
 }
 
-export async function getArticleCount(sourceId?: number) {
-  const client = await pool.connect();
+export async function getArticleCount(sourceId?: number): Promise<number> {
+  let client;
   try {
+    client = await pool.connect();
     let query = `SELECT COUNT(*) as count FROM news.articles`;
     const params: any[] = [];
 
@@ -134,8 +145,11 @@ export async function getArticleCount(sourceId?: number) {
 
     const result = await client.query(query, params);
     return parseInt(result.rows[0].count);
+  } catch (error) {
+    console.error('Error counting articles:', error);
+    throw error;
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 

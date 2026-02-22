@@ -1,3 +1,5 @@
+'use client';
+
 import { formatDistanceToNow } from 'date-fns';
 import { az } from 'date-fns/locale';
 import { Article } from '@/lib/db';
