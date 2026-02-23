@@ -214,7 +214,12 @@ INSERT INTO news_sources (name, domain, base_url, language, pagination_type, scr
 ('Oxu', 'oxu.az', 'https://oxu.az', 'az', 'query_param', '{"anti_scraping": true, "requires_headers": true}'),
 ('Report', 'report.az', 'https://report.az', 'az', 'query_param', '{"pagination_param": "page", "multilingual": true}'),
 ('Xezer Xeber', 'xezerxeber.az', 'https://www.xezerxeber.az', 'az', 'infinite_scroll', '{"use_infinite_scroll": true}'),
-('Modern', 'modern.az', 'https://modern.az', 'az', 'query_param', '{"pagination_param": "page", "multilingual": true, "languages": ["az", "en", "ru", "tr", "fa"]}');
+('Modern', 'modern.az', 'https://modern.az', 'az', 'query_param', '{"pagination_param": "page", "multilingual": true, "languages": ["az", "en", "ru", "tr", "fa"]}'),
+('Banker.az', 'banker.az', 'https://banker.az', 'az', 'path_based', '{"pagination_param": "page"}'),
+('Fed.az', 'fed.az', 'https://fed.az', 'az', 'path_based', '{}'),
+('Marja.az', 'marja.az', 'https://marja.az', 'az', 'query_param', '{"pagination_param": "page"}'),
+('Qafqazinfo.az', 'qafqazinfo.az', 'https://qafqazinfo.az', 'az', 'query_param', '{"pagination_param": "page"}'),
+('Trend.az', 'trend.az', 'https://az.trend.az', 'az', 'query_param', '{"single_page": true}');
 
 -- Create view for article statistics
 CREATE OR REPLACE VIEW article_stats AS

@@ -15,6 +15,12 @@ from scraper_job.scrapers.apa_scraper import APAScraper
 from scraper_job.scrapers.report_scraper import ReportScraper
 from scraper_job.scrapers.modern_scraper import ModernScraper
 from scraper_job.scrapers.axar_scraper import AxarScraper
+from scraper_job.scrapers.banker_scraper import BankerScraper
+from scraper_job.scrapers.fed_scraper import FedScraper
+from scraper_job.scrapers.marja_scraper import MarjaScraper
+from scraper_job.scrapers.oxu_scraper import OxuScraper
+from scraper_job.scrapers.qafqazinfo_scraper import QafqazinfoScraper
+from scraper_job.scrapers.trend_scraper import TrendScraper
 
 # Configure logger
 logger.remove()
@@ -40,7 +46,12 @@ SCRAPERS = {
     'report.az': ReportScraper,
     'modern.az': ModernScraper,
     'axar.az': AxarScraper,
-    # Add more scrapers as they are implemented
+    'banker.az': BankerScraper,
+    'fed.az': FedScraper,
+    'marja.az': MarjaScraper,
+    'oxu.az': OxuScraper,
+    'qafqazinfo.az': QafqazinfoScraper,
+    'trend.az': TrendScraper,
 }
 
 
