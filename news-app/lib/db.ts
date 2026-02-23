@@ -93,11 +93,10 @@ export async function getNewsSources(): Promise<NewsSource[]> {
   try {
     client = await pool.connect();
     const query = `
-      SELECT DISTINCT ns.*
-      FROM news.news_sources ns
-      INNER JOIN news.articles a ON ns.id = a.source_id
-      WHERE ns.is_active = TRUE
-      ORDER BY ns.name
+      SELECT *
+      FROM news.news_sources
+      WHERE is_active = TRUE
+      ORDER BY name
     `;
     const result = await client.query<NewsSource>(query);
     return result.rows;
