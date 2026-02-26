@@ -7,8 +7,6 @@ CREATE SCHEMA IF NOT EXISTS news;
 -- Set search path to use news schema
 SET search_path TO news, public;
 
--- Enable UUID extension for unique identifiers
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public;
 
 -- Table: news_sources
 -- Stores information about each news website being scraped
@@ -40,7 +38,7 @@ CREATE TABLE categories (
 -- Table: articles
 -- Main table for storing scraped news articles
 CREATE TABLE articles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     source_id INTEGER NOT NULL REFERENCES news_sources(id) ON DELETE CASCADE,
     source_article_id VARCHAR(255), -- Original article ID from the source website (increased from 100 for long slugs)
     title TEXT NOT NULL,
@@ -85,7 +83,7 @@ CREATE TABLE articles (
 -- Table: summaries
 -- AI-generated summaries of articles
 CREATE TABLE summaries (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
 
     -- Summary content
@@ -116,7 +114,7 @@ CREATE TABLE summaries (
 -- Table: scrape_jobs
 -- Track scraping job execution and status
 CREATE TABLE scrape_jobs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     source_id INTEGER REFERENCES news_sources(id) ON DELETE CASCADE,
 
     -- Job details
@@ -148,7 +146,7 @@ CREATE TABLE scrape_jobs (
 -- Table: scrape_errors
 -- Detailed error logging for individual article scraping failures
 CREATE TABLE scrape_errors (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     job_id UUID REFERENCES scrape_jobs(id) ON DELETE CASCADE,
     source_id INTEGER REFERENCES news_sources(id) ON DELETE CASCADE,
 
