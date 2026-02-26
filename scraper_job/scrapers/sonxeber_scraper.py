@@ -30,7 +30,10 @@ class SonxeberScraper(BaseScraper):
         if page_number == 1:
             return f"{self.base_url}/xeberler/"
         else:
-            return f"{self.base_url}/xeberler/?start={page_number}"
+            # ?start= is a Joomla item offset, not a page number
+            page_size = self.scraper_config.get('pagination_increment', 45)
+            offset = (page_number - 1) * page_size
+            return f"{self.base_url}/xeberler/?start={offset}"
 
     def extract_article_id(self, url: str) -> Optional[str]:
         """
